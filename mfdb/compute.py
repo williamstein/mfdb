@@ -17,6 +17,9 @@ class Filenames(object):
     def ambient(self, N, k, i):
         return os.path.join(self.space(N,k,i), 'M.sobj')
 
+    def decomp_meta(self, N, k, i):
+        return os.path.join(self.space(N,k,i), 'decomp-meta.sobj')
+    
     def factor(self, N, k, i, d, makedir=True):
         f = os.path.join(self.space(N,k,i), '%03d'%d)
         if makedir and not os.path.exists(f):
@@ -128,6 +131,7 @@ def compute_decompositions(N, k, i):
     if os.path.exists(filenames.factor(N, k, i, 0, makedir=False)):
         return
     
+    t = cputime()
     M = load_ambient_space(N, k, i)
     D = M.cuspidal_subspace().new_subspace().decomposition()
     for d in range(len(D)):
@@ -145,6 +149,9 @@ def compute_decompositions(N, k, i):
         save(v, filenames.factor_dual_eigenvector(N, k, i, d))
         save(nz, filenames.factor_eigen_nonzero(N, k, i, d))
         
+    tm = cputime(t)
+    meta = {'cputime':tm, 'number':len(D), 'version':version()}
+    save(meta, filenames.decomp_meta(N, k, i))
 
 def compute_decomposition_ranges(Nrange, krange, irange, ncpu):
     @parallel(ncpu)
