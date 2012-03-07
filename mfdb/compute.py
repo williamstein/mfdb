@@ -17,9 +17,9 @@ class Filenames(object):
     def ambient(self, N, k, i):
         return os.path.join(self.space(N,k,i), 'M.sobj')
 
-    def factor(self, N, k, i, d):
+    def factor(self, N, k, i, d, makedir=True):
         f = os.path.join(self.space(N,k,i), '%03d'%d)
-        if not os.path.exists(f):
+        if makedir and not os.path.exists(f):
             os.makedirs(f)
         return f
         
@@ -106,7 +106,7 @@ def compute_decompositions(N, k, i):
         sgn = (-1)**k
         for j, g in enumerate(G):
             if g[0](-1) == sgn:
-                compute_ambient_space(N,k,j)
+                compute_decompositions(N,k,j)
         return
 
     if i == 'quadratic':
@@ -114,7 +114,7 @@ def compute_decompositions(N, k, i):
         sgn = (-1)**k
         for j, g in enumerate(G):
             if g[0](-1) == sgn and g[0].order()==2:
-                compute_ambient_space(N,k,j)
+                compute_decompositions(N,k,j)
         return
 
     filename = filenames.ambient(N, k, i)
@@ -125,7 +125,9 @@ def compute_decompositions(N, k, i):
     
     eps = DirichletGroup(N).galois_orbits()[i][0]
 
-    t = cputime()
+    if os.path.exists(filenames.factor(N, k, i, 0, makedir=False)):
+        return
+    
     M = load_ambient_space(N, k, i)
     D = M.cuspidal_subspace().new_subspace().decomposition()
     for d in range(len(D)):
@@ -143,9 +145,6 @@ def compute_decompositions(N, k, i):
         save(v, filenames.factor_dual_eigenvector(N, k, i, d))
         save(nz, filenames.factor_eigen_nonzero(N, k, i, d))
         
-    tm = cputime(t)
-    meta = {'cputime':tm, 'number':len(D), 'version':version()}
-    save(meta, filenames.meta(filename))
 
 def compute_decomposition_ranges(Nrange, krange, irange, ncpu):
     @parallel(ncpu)
