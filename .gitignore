@@ -1,0 +1,5 @@
+*~
+push
+*.DS_Store
+*.pyc
+data/

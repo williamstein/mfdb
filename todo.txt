@@ -1,0 +1,30 @@
+
+[x] Figure out what holomorphic data is in database now and in what
+    form.
+--> too hard; it's all burried in the middle of Python code for returning requests.  I give.
+
+[x] Create bitbucket project for his.   Use bitbucket because it is less limited. 
+
+    ? Create my own nosqlite? database "schema" that has at least that
+      data recomputed from scratch.
+
+    Must output "what is known" really easily.
+
+    Data in plain text format stored in git repo.
+
+[ ] Compute data in reproducible way.  Simple program.  Complexity of algorithm in Sage itself.
+
+[ ] Make web interface to nosqlite database for easy and bug free use "just in case".
+
+[ ] Expand data that is computed using more compute resources. 
+
+[ ] Put data back into lmfdb mongodb.
+
+
+
+
+
+
+
+
+

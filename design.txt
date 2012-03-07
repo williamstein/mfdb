@@ -1,0 +1,122 @@
+What to compute and how:
+-----------------------
+
+By *modform*, we mean a classical cuspidal holomorphic modular form of
+integer weight k>=2, level N, and character chi.
+
+Our goal is to "compute" as many modforms as possible. 
+
+ISSUES TO AVOID:
+
+I've done this a few billion times before, and the main problem is always:
+
+  - lack of knowing what I have,
+
+  - data is in a format that is hard to work with: 
+      - in a database
+      - in opaque sobj's that stop working
+      - unclear text files
+      - data is presented only via a webpage
+      - hard to extend data
+      - data takes up too much space (for what it provides)
+      - data not under revision control, so unclear when/where/how it was computed
+  
+WHAT TO COMPUTE (store using JSON):
+ 
+   - explicit presentation for a modular symbols space attached to:
+      level = positive integer
+      weight = positive integer
+      character = nonnegative integer i, s.t. chi = DirichletGroup(10000).galois_orbits()[i][0].
+                  plus a table that records representatives
+   - decomposition of new subspace: explicit list of matrices that define subspaces
+   - basis for eigenvalue field
+   - many Hecke eigenvalues a_p
+
+SECONDARY DATA (computable from the above):
+
+   - reduction of systems of Hecke eigenvalues modulo small primes
+   - arithmetic data, e.g., congruence modulus
+   - zeros of L(f,s)
+   - special values of L(f,s)
+   
+In all my experience, the best format for storing data, which could
+also be revision controlled, was complete objects in subdirectories.
+
+Let K be the base field, which in all cases is QQ or a cyclotomic
+field.
+
+
+    level-weight-character/    # 99999-999-999, e.g., 00043-002-000
+        M.sobj     # modular symbols space of dimension n
+        0/         # factor of dimension d
+            B      # basis_matrix -- d x n matrix over K
+            Bd     # dual_basis_matrix -- d x n matrix over K
+            v      # dual_eigenvector -- degree n vector over relative extension of K
+            aplist # m eigenvalues:  m x d matrix over K
+
+PLAN:
+
+  1. Compute and store (as sobj) ambient spaces for some range of N,k,chi.
+
+         C = DirichletGroup(43).galois_orbits()
+         C[0]   # [Dirichlet character modulo 43 of conductor 1 mapping 3 |--> 1]
+         M = ModularSymbols(43, 2, sign=1)
+         save(M, 'M.sobj')
+         # could also store timing meta info in M.txt
+
+     This *only* stores the basic presentation without anything complicated.
+     Will take little space.
+
+  2. Go through and compute decompositions of new subspace for each.
+
+         D = M.cuspidal_subspace().new_subspace().decomposition()
+     
+     and for each simple factor A = D[i] compute and save the
+     following about A:
+
+         i  = 1
+         A  = D[i]   # say
+         B  = A.free_module().basis_matrix()
+         Bd = A.dual_free_module().basis_matrix()
+         v  = A.dual_eigenvector(names='a', lift=False)    # vector over number field
+         nz = A._eigen_nonzero()
+         save(B,'%s/B.sobj'%i)  # really pad to 001
+         save(Bd,'%s/Bd.sobj'%i)
+         save(v,'%s/v.sobj'%i)          
+         save(nz,'%s/nz.sobj'%i)
+
+  3. Compute aplists.  Reconstruct A from the above data as follows:
+
+         M  = load('M.sobj')  
+         i  = 1
+         B  = load('%s/B.sobj'%i)
+         Bd = load('%s/Bd.sobj'%i)
+         v  = load('%s/v.sobj'%i)
+         nz = load('%s/nz.sobj'%i)
+         B._cache['in_echelon_form'] = True
+         Bd._cache['in_echelon_form'] = True
+         A = sage.modular.modsym.subspace.ModularSymbolsSubspace(M, B.row_module(), Bd.row_module(), check=False)
+         A._HeckeModule_free_module__dual_eigenvector = {('a',nz):(v,False)}
+     
+    Then compute aplist, which is a matrix with one row for each prime up to 100 (say):
+      
+         aplist, _ = A.compact_system_of_eigenvalues(prime_range(100), 'a')             
+         save(aplist,'%s/aplist-100.sobj'%i)
+    
+    Later add more data with aplist-n-m meaning prime_range(n,m):
+
+         aplist, _ = A.compact_system_of_eigenvalues(prime_range(1000), 'a')             
+         save(aplist,'%s/aplist-1000.sobj'%i)
+         aplist, _ = A.compact_system_of_eigenvalues(prime_range(1000,10000), 'a')  
+         save(aplist,'%s/aplist-1000-10000.sobj'%i)   
+   
+  4. View aplist in terms of power basis:
+     
+         aplist = load('%s/aplist-100.sobj'%i)
+         v = load('%s/v.sobj'%i)
+         aplist*v
+         (a, -a, -a + 2, a - 2, 2*a - 1, 2*a + 1, 2*a + 5, -2*a - 2, -4*a + 1, 3*a, -3, -6*a, -2*a - 1, 1, 6, -2*a + 11, 2*a - 2, 3*a + 4, 6*a + 1, -2*a - 6, 3*a - 12, -2*a + 2, 4*a + 9, -3*a - 6, -2*a - 1)
+
+  5. Later -- write code to compute mod-p reductions, etc.  
+
+
