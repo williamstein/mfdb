@@ -170,21 +170,11 @@ in general.
        OUTPUT: Sorted list of characters divided by Galois orbit, with
                their sequence number and parity.
  
-     * NAME:   known_newforms
-       INPUT:  sqlite query involving N,k,i
-       OUTPUT: (N,k,i) -- all spaces (N,k,i) for which a decomposition
-               has been computed, where N,k,i satisfy the given
-               constraint.
-
-     * NAME:   known_aplists
-       INPUT:  sqlite query involving N,k,i,maxp
-       OUTPUT: (N,k,i) -- all spaces (N,k,i) for which the aplist has
-               been computed, where N,k,i,maxp satisfy the given
-               constraint.
-
-     * NAME:   count
-       INPUT:  query involving (N,k,i)
-       OUTPUT: number of newforms in the space 
+     * NAME:   known
+       INPUT:  sqlite query involving N,k,i,newforms,maxp
+       OUTPUT: 5-tuples (N,k,i,n,m), where
+                    N = level; k = weight; i = character; 
+                    n = number of newforms; m = largest p such that a_p known for all newforms
 
      * NAME:   modsym_sobj
        INPUT:  (N,k,i,j)
@@ -195,6 +185,16 @@ in general.
        OUTPUT: Sage object consisting of the pair (v, aplist), where v is the
                dual eigenvector, aplist is a matrix and v*aplist is the list
                of coefficients in terms of a power basis. 
+
+For PHASE 1, we use the following database schema:
+
+N   k  i   newforms   maxp
+37  2  0   2          2
+
+If no newforms have been computed, that newforms is -1.  The above can
+all be deduced from the filesystem, without having to open any sobj
+files.
+
 
   PHASE 2:
 

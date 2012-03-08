@@ -1,19 +1,33 @@
 import os
 
-from sage.all import (ModularSymbols, DirichletGroup,
+import sqlite3
+
+from sage.all import (ModularSymbols, DirichletGroup, dimension_new_cusp_forms,
                       save, load,
                       cputime,
                       fork, parallel,
                       Integer,
                       prime_range,
                       version,
-                      Sequence)
+                      Sequence,
+                      cached_function)
+
+@cached_function
+def characters(N):
+    """
+    Return Galois orbits of Dirichlet characters of level N.
+    """
+    return DirichletGroup(N).galois_orbits()
+
+def character(N, i):
+    return characters(N)[i][0]
 
 class Filenames(object):
     def __init__(self, data):
         if not os.path.exists(data):
             raise RuntimeError, "please create the data directory '%s'"%data
         self._data = data
+        self._known_db_file = os.path.join(self._data, 'known.sqlite3')
         
     def space(self, N, k, i, makedir=True):
         f = os.path.join(self._data, '%05d-%03d-%03d'%(N,k,i))
@@ -58,6 +72,84 @@ class Filenames(object):
         if filename.endswith('.sobj'):
             filename = filename[:-len('.sobj')]
         return filename + '-meta.sobj'
+
+    def find_known(self):
+        """
+        Return iterator of 5-tuples of Python ints, defined as follows:
+
+            (N, k, i, newforms, maxp)
+            (37, 2, 0, 2, 10000)
+
+        Here N = level, k = weight, i = character, newforms = number of newforms,
+        maxp = integer such that a_p is known for p<=maxp.
+
+        If no newforms are known but there are newforms (they just
+        haven't been computed), then newforms is set to -1.
+        """
+        for Nki in os.listdir(self._data):
+            z = Nki.split('-')
+            if len(z) == 3:
+                N, k, i = [int(x) for x in z]
+                newforms = [x for x in os.listdir(os.path.join(self._data, Nki)) if x.isdigit()]
+                if len(newforms) == 0:
+                    # maybe nothing computed?
+                    if i == 0:
+                        # program around a bug in dimension_new_cusp_forms: Trac 12640
+                        d = dimension_new_cusp_forms(N)
+                    else:
+                        chi = character(N, i)
+                        d = dimension_new_cusp_forms(chi, k)
+                    if d == 0:
+                        # definitely no newforms
+                        yield (N,k,i,0,0)
+                    else:
+                        # we just don't know the newforms yet
+                        yield (N,k,i,-1,0)
+                else:
+                    maxp = None
+                    for n in newforms:
+                        v = set([])
+                        this_maxp = 0
+                        for X in os.listdir(os.path.join(self._data, Nki, n)):
+                            if X.startswith('aplist') and 'meta' not in X:
+                                args = [int(a) for a in X.rstrip('.sobj').split('-')[1:]]
+                                v.update(prime_range(*args))
+                                this_maxp = max(this_maxp, max(args))
+                        if len(v) != len(prime_range(this_maxp)):
+                            # something missing!
+                            raise RuntimeError, "data ranges are missing in the aplist data for %s"%Nki
+                        maxp = this_maxp if maxp is None else min(this_maxp, maxp)
+
+                    yield (N,k,i,len(newforms),maxp)
+
+    def create_known_db(self):
+        # 1. create the sqlite3 database
+        if os.path.exists(self._known_db_file):
+            os.unlink(self._known_db_file)
+        db = sqlite3.connect(self._known_db_file)
+        cursor = db.cursor()
+        schema = 'CREATE TABLE "known" (N, k, i, newforms, maxp)'
+        cursor.execute(schema)
+        db.commit()
+
+        # 2. iterate over known 5-tuples inserting them in db
+        for t in self.find_known():
+            print t
+            cursor.execute("INSERT INTO known VALUES(?,?,?,?,?)", t)
+
+        db.commit()
+
+
+    def known(self, query):        
+        # 1. open database
+        db = sqlite3.connect(self._known_db_file)
+        cursor = db.cursor()
+
+        # 2. return result of query
+        return cursor.execute('SELECT * FROM known WHERE %s'%query)
+        
+
+################################################    
 
 filenames = Filenames('data')
 
