@@ -201,14 +201,12 @@ def compute_decomposition_ranges(Nrange, krange, irange, ncpu):
     
 @fork    
 def compute_aplists(N, k, i, *args):
-    if len(args) == 0:
-        args = (100, )
     if i == 'all':
         G = DirichletGroup(N).galois_orbits()
         sgn = (-1)**k
         for j, g in enumerate(G):
             if g[0](-1) == sgn:
-                compute_aplists(N,k,j)
+                compute_aplists(N,k,j,*args)
         return
 
     if i == 'quadratic':
@@ -216,14 +214,19 @@ def compute_aplists(N, k, i, *args):
         sgn = (-1)**k
         for j, g in enumerate(G):
             if g[0](-1) == sgn and g[0].order()==2:
-                compute_aplists(N,k,j)
+                compute_aplists(N,k,j,*args)
         return
+
+    if len(args) == 0:
+        args = (100, )
 
     filename = filenames.ambient(N, k, i)
     if not os.path.exists(filename):
         print "Ambient (%s,%s,%s) space not computed."%(N,k,i)
         return
         #compute_ambient_space(N, k, i)
+
+    print "computing aplists for (%s,%s,%s)"%(N,k,i)
         
     eps = DirichletGroup(N).galois_orbits()[i][0]
 
@@ -237,13 +240,16 @@ def compute_aplists(N, k, i, *args):
     for d in range(m):
         aplist_file = filenames.factor_aplist(N, k, i, d, False, *args)
         if os.path.exists(aplist_file):
+            print "skipping computing aplist(%s) for (%s,%s,%s,%s) since it already exists"%(args, N,k,i,d)
             # already done
             continue
         
         # compute aplist
+        print "computing aplist(%s) for (%s,%s,%s,%s)"%(args, N,k,i,d)
         t = cputime()
         A = load_factor(N, k, i, d, M)
         aplist, _ = A.compact_system_of_eigenvalues(prime_range(*args), 'a')
+        print aplist, aplist_file
         save(aplist, aplist_file)
         tm = cputime(t)
         meta = {'cputime':tm, 'version':version()}
@@ -252,7 +258,7 @@ def compute_aplists(N, k, i, *args):
 def compute_aplists_ranges(Nrange, krange, irange, ncpu, *args):
     @parallel(ncpu)
     def f(N,k,i):
-        compute_aplists(N,k,i)
+        compute_aplists(N,k,i,*args)
 
     v = [(N,k,i) for N in rangify(Nrange) for k in rangify(krange) for i in rangify(irange)]
     for X in f(v):
