@@ -58,8 +58,8 @@ class Filenames(object):
     def factor_dual_basis_matrix(self, N, k, i, d):
         return os.path.join(self.factor(N,k,i,d), 'Bd.sobj')
     
-    def factor_dual_eigenvector(self, N, k, i, d):
-        return os.path.join(self.factor(N,k,i,d), 'v.sobj')
+    def factor_dual_eigenvector(self, N, k, i, d, makedir=True):
+        return os.path.join(self.factor(N,k,i,d,makedir=makedir), 'v.sobj')
 
     def factor_eigen_nonzero(self, N, k, i, d):
         return os.path.join(self.factor(N,k,i,d), 'nz.sobj')
@@ -141,6 +141,9 @@ class Filenames(object):
 
 
     def known(self, query):
+        # TODO -- fix db
+        query = query.replace('prec','maxp')
+        
         # 1. open database
         db = sqlite3.connect(self._known_db_file)
         cursor = db.cursor()
@@ -149,8 +152,12 @@ class Filenames(object):
         # really stupid and dangerous?
         if ';' in query:
             query = query.split(';')[0]
-            
-        return cursor.execute('SELECT * FROM known WHERE %s'%query)
+
+        cmd = 'SELECT * FROM known '
+        if query.strip():
+            cmd += 'WHERE %s'%query
+        cmd += ' ORDER BY N, k, i'
+        return cursor.execute(cmd)
         
 
 ################################################    
