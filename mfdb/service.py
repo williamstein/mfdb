@@ -1,11 +1,10 @@
-from sage.all import (DirichletGroup,
-                      )
+import compute
 
 class Service(object):
-    def __init__(self, db_file):
-        self._db_file = db_file
+    def __init__(self, filenames):
+        self._filenames = filenames
 
-    def update_database(self, filenames):
+    def update_database(self):
         """
         Create the sqlite3 database using the data pointed to by the
         filenames object.  This database has schema:
@@ -17,14 +16,14 @@ class Service(object):
             table is empty.  The above can all be deduced from the
             filesystem, without having to open any sobj files.
         """
-        raise NotImplementedError
+        self._filenames.update_known_db()
         
     def characters(self, N):
         """
         Return a sorted list of characters divided by Galois orbit,
         with their sequence number and parity.
         """
-        return DirichletGroup(N).galois_orbits()
+        return compute.characters(N)
     
     def known(self, query):
         """
@@ -37,13 +36,16 @@ class Service(object):
         If no newforms have yet been computed, but the space is known,
         then the number of newforms is set to -1.
         """
-        raise NotImplementedError
+        return self._filenames.known(query)
 
-    def modsym(self, N, k, i, j):
+    def modsym(self, N, k, i, j=None):
         """
         Return the corresponding simple modular symbols factor.
         """
-        raise NotImplementedError
+        if j is None:
+            return compute.load_ambient_space(N, k, i)
+        else:
+            return compute.load_factor(N, k, i, j)
 
     def aplist(self, N, k, i, j, pmax):
         """
@@ -52,3 +54,5 @@ class Service(object):
         terms of a power basis.
         """
         raise NotImplementedError
+        #v = load(self._filenames.factor_dual_eigenvector(N, k, i, d))
+        #    files = self._filenames.factor_aplist_pmax(N, k, i, d, pmax)

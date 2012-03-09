@@ -122,7 +122,7 @@ class Filenames(object):
 
                     yield (N,k,i,len(newforms),maxp)
 
-    def create_known_db(self):
+    def update_known_db(self):
         # 1. create the sqlite3 database
         if os.path.exists(self._known_db_file):
             os.unlink(self._known_db_file)
@@ -140,12 +140,16 @@ class Filenames(object):
         db.commit()
 
 
-    def known(self, query):        
+    def known(self, query):
         # 1. open database
         db = sqlite3.connect(self._known_db_file)
         cursor = db.cursor()
 
         # 2. return result of query
+        # really stupid and dangerous?
+        if ';' in query:
+            query = query.split(';')[0]
+            
         return cursor.execute('SELECT * FROM known WHERE %s'%query)
         
 

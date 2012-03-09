@@ -263,3 +263,9 @@ files.
        OUTPUT: order of vanishing and leading coefficient of the
                L-series at all critical integer points to the best
                precision we can get.
+
+
+---------------
+
+Now I'm going to try to make a simple webpage that provides access to at
+least all the sobj's, using flask.
