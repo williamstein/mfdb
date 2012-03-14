@@ -1,1 +1,1 @@
-sage -python mfdb/site1.py
+sage/sage -python mfdb/site1.py
