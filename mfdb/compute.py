@@ -117,8 +117,10 @@ class Filenames(object):
                                 this_maxp = max(this_maxp, max(args))
                         if len(v) != len(prime_range(this_maxp)):
                             # something missing!
-                            raise RuntimeError, "data ranges are missing in the aplist data for %s"%Nki
-                        maxp = this_maxp if maxp is None else min(this_maxp, maxp)
+                            print "data ranges are missing in the aplist data for %s"%Nki
+                            maxp = 100
+                        else:
+                            maxp = this_maxp if maxp is None else min(this_maxp, maxp)
 
                     yield (N,k,i,len(newforms),maxp)
 

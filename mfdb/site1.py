@@ -115,11 +115,11 @@ def aplist_powerbasis():
     if hasattr(K, 'defining_polynomial'):
         s += 'f = %s;\n'%str(K.defining_polynomial()).replace(' ', '')
     ap = str(list(aplist*v)).replace(' ','')
-    if K.degree() >= 4:
+    if K.absolute_degree() >= 4:
         ap = ap.replace(',',',\n')
     s += 'ap = %s'%(ap)
     s += '\n</pre>'
     return s
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5389)

@@ -1,6 +1,8 @@
 import mfdb.compute
 reload(mfdb.compute)
 
+time mfdb.compute.filenames.update_known_db()
+
 
 time mfdb.compute.compute_decomposition_ranges([1], [2..100], 0, 12)
 
@@ -21,3 +23,18 @@ time mfdb.compute.compute_aplists_ranges([2000..3100],2, 0, 6, 100,1000)
 
 
 
+
+
+time mfdb.compute.compute_aplists_ranges([3601..3750],2, 0, 2, 100)
+
+time mfdb.compute.compute_decomposition_ranges([3768..10000],2,0,20)
+
+time mfdb.compute.compute_aplists_ranges([2000..3600], 2, 0, 6, 100, 1000)
+
+time mfdb.compute.compute_ambient_spaces([1..100], [3..12], 'all', 12)
+#TODO
+time mfdb.compute.compute_decomposition_ranges([1..100],[3..12],'all',12)
+time mfdb.compute.compute_aplists_ranges([1..100],[3..12],'all',12, 100)
+
+# on mod.math
+time mfdb.compute.compute_aplists_ranges([1000..4000], 2, 0, 24, 1000, 10000)
