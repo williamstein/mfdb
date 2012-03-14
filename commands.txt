@@ -2,6 +2,12 @@ import mfdb.compute
 reload(mfdb.compute)
 
 
+time mfdb.compute.compute_decomposition_ranges([1], [2..100], 0, 12)
+
+time mfdb.compute.compute_ambient_spaces([1..5], [2..100], 'all', 12)
+time mfdb.compute.compute_decomposition_ranges([1..5], [2..100],'all', 12)
+time mfdb.compute.compute_aplists_ranges([1..5], [2..100], 'all', 12, 100)
+
 time mfdb.compute.compute_aplists_ranges([1..2000],2, 0, 6, 100, 1000)
 time mfdb.compute.compute_aplists_ranges([1..2000], 2, 0, 6, 1000, 10000)
 
