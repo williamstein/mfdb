@@ -10,17 +10,24 @@ from sage.all import (ModularSymbols, DirichletGroup, dimension_new_cusp_forms,
                       prime_range,
                       version,
                       Sequence,
-                      cached_function)
+                      cached_function,
+                      Integer)
+
+def dim_new(chi, k):
+    if not isinstance(chi, (int, long, Integer)) and chi.is_trivial():
+        return dimension_new_cusp_forms(chi.modulus(), k)
+    else:
+        return dimension_new_cusp_forms(chi, k)
 
 @cached_function
 def characters(N):
     """
-    Return Galois orbits of Dirichlet characters of level N.
+    Return representatives for the Galois orbits of Dirichlet characters of level N.
     """
-    return DirichletGroup(N).galois_orbits()
+    return [X[0] for X in DirichletGroup(N).galois_orbits()]
 
 def character(N, i):
-    return characters(N)[i][0]
+    return characters(N)[i]
 
 class Filenames(object):
     def __init__(self, data):
@@ -164,10 +171,14 @@ class Filenames(object):
         cmd += ' ORDER BY N, k, i'
         return cursor.execute(cmd)
         
-    def find_missing(self, Nrange, krange, irange):
+    def find_missing(self, Nrange, krange, irange, fields=None):
         """
-        Return iterator of 4-tuples (N, k, i, missing), where missing
-        is one of the following strings:
+        Return generator of
+        
+             {'N':N, 'k':k, 'i':i, 'missing':missing, ...},
+
+        where missing is in the intersection of fields and the
+        following strings (or all strings if fields is None):
 
                 'M', 'decomp',
                 'aplist-00100',  'aplist-00100-01000',  'aplist-01000-10000',
@@ -180,22 +191,79 @@ class Filenames(object):
         the indicated data is not complete for *all* newforms in this
         space, i.e., at least one is missing.  If 'decomp' is given,
         it means the decomp isn't complete (it could be partial).
+        
+        Spaces with dimension 0 are totally ignored. 
+
+        Note that not every missing is listed, just the *next* one that
+        needs to be computed, e.g., if (11,2,0,'M') is output, then
+        nothing else for (11,2,0,*) will be output.
         """
+        if fields is None:
+            fields = set(['M', 'decomp',
+                'aplist-00100',  'aplist-00100-01000',  'aplist-01000-10000',
+                'charpoly-00100','charpoly-00100-01000','charpoly-01000-10000',
+                'zeros', 
+                'leading', 
+                'atkin_lehner'])
+        else:
+            assert isinstance(fields, (list, tuple, str))
+            fields = set(fields)
+
         data = set(os.listdir(self._data))
         for k in rangify(krange):
             for N in rangify(Nrange):
-                for i in rangify(irange):
-                    if i == 0:
-                        # program around a bug in dimension_new_cusp_forms: Trac 12640
-                        d = dimension_new_cusp_forms(N)
+                for ch in rangify(irange):
+                    
+                    if isinstance(ch, str):
+                        CHI = list(enumerate(characters(N)))
+                        if ch == 'quadratic':
+                            CHI = [(i,chi) for i,chi in CHI if chi.order()==2]
+                        elif ch == 'all':
+                            pass
+                        else:
+                            raise ValueError
                     else:
-                        chi = character(N, i)
-                        d = dimension_new_cusp_forms(chi, k)
-                    if d > 0:
-                        dirname = self.space_name(N,k,i)
-                        if dirname not in data:
-                            yield (N,k,i,'M')
-
+                        try:
+                            CHI = [(ch, character(N, ch))]
+                        except IndexError:
+                            CHI = []
+                            
+                    for i, chi in CHI:
+                        N,k,i = int(N), int(k), int(i)
+                        obj = {'space':(N,k,i)}
+                        dim = dim_new(chi, k)
+                        if dim > 0:
+                            Nki = self.space_name(N,k,i)
+                            if Nki not in data:
+                                if 'M' in fields:
+                                    obj2 = dict(obj)
+                                    obj2['missing'] = 'M'
+                                    yield obj2
+                                break
+                            newforms = []
+                            d3 = os.path.join(self._data, Nki)
+                            for fname in os.listdir(d3):
+                                if fname.isdigit():
+                                    # directory containing data about a newforms
+                                    d2 = os.path.join(d3, fname)
+                                    deg = os.path.join(d2, 'degree.txt')
+                                    if os.path.exists(deg):
+                                        degree = eval(open(deg).read())
+                                    else:
+                                        degree = load(os.path.join(d2, 'B.sobj')).nrows()
+                                        open(os.path.join(d2, 'degree.txt'),'w').write(str(degree))
+                                    newforms.append({'fname':fname, 'degree':degree})
+                            sum_deg = sum(f['degree'] for f in newforms)
+                            if 'decomp' in fields and sum_deg != dim:
+                                obj2 = dict(obj)
+                                obj2['missing'] = 'decomp'
+                                obj2['newforms'] = newforms
+                                if sum_deg > dim:
+                                    obj2['bug'] = 'sum of degrees (=%s) is too big (should be %s) -- internal consistency error!'%(sum_deg, dim)
+                                yield obj2
+                                break
+                        
+                            
 ################################################    
 
 filenames = Filenames('data')

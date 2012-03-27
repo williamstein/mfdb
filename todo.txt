@@ -41,8 +41,12 @@ At LMFDB workshop:
 
 [ ] export data in a way that LMFDB project can use
 
+[ ] straight programming task: replace M.sobj with data that is the
+    *presentation* and nothing else.
+
 [ ] rewrite mfdb.modform.org to GAE as demo to serve something useful
     as a test
+
 
 --------------------------------------
 
