@@ -234,8 +234,10 @@ class Filenames(object):
                         dim = dim_new(chi, k)
                         if dim > 0:
                             fields0 = list(fields)
-                            fields0.remove('M')
-                            fields0.remove('decomp')
+                            if 'M' in fields0:
+                                fields0.remove('M')
+                            if 'decomp' in fields0:
+                                fields0.remove('decomp')
                             Nki = self.space_name(N,k,i)
                             if Nki not in space_params:
                                 if 'M' in fields0:
@@ -498,10 +500,10 @@ def compute_aplists_ranges(Nrange, krange, irange, ncpu, *args):
 
 
     
-def phase1_goals(stages):
+def phase1_goals(stages, fields=None):
     """
       Trivial character S_k(G0(N)):
-         * k=2   and N<=8192  = 2^13
+         * k=2   and N<=4096  = 2^12
          * k<=16 and N<=512 = 2^9
          * k<=32 and N<=32  = 2^5
       Nontrivial character S_k(N, chi):
@@ -509,25 +511,25 @@ def phase1_goals(stages):
          * k=2,   N<=128 = 2^7, all chi!=1, up to Galois orbit
     """
     if 0 in stages:
-        for X in filenames.find_missing(range(1,8193), [2], 0):
+        for X in filenames.find_missing(range(1,4096+1), [2], 0, fields=fields):
             yield X
             
     if 1 in stages:
         for X in filenames.find_missing(range(1,513),
-                                        range(2,17,2), 0):
+                                        range(2,17,2), 0, fields=fields):
             yield X
             
     if 2 in stages:
         for X in filenames.find_missing(range(1,33),
-                                        range(2,33,2), 0):
+                                        range(2,33,2), 0, fields=fields):
             yield X
             
     if 3 in stages:
         for X in filenames.find_missing(range(1,129),
-                                                     range(2,17), 'quadratic'):
+                                 range(2,17), 'quadratic', fields=fields):
             yield X
             
     if 4 in stages:
-        for X in filenames.find_missing(range(1,129), 2, 'all'):
+        for X in filenames.find_missing(range(1,129), 2, 'all', fields=fields):
             yield X
         

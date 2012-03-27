@@ -13,7 +13,7 @@ At LMFDB workshop:
 
     Ranges:
       Trivial character S_k(G0(N)):
-         * k=2   and N<=8192  = 2^13
+         * k=2   and N<=4096  = 2^12
          * k<=16 and N<=512 = 2^9
          * k<=32 and N<=32  = 2^5
       Nontrivial character S_k(N, chi):
