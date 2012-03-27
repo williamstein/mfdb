@@ -26,9 +26,22 @@ time mfdb.compute.compute_decomposition_ranges([3768..10000],2,0,20)
 time mfdb.compute.compute_aplists_ranges([2000..3600], 2, 0, 6, 100, 1000)
 
 time mfdb.compute.compute_ambient_spaces([1..100], [3..12], 'all', 12)
-#TODO
 time mfdb.compute.compute_decomposition_ranges([1..100],[3..12],'all',12)
 time mfdb.compute.compute_aplists_ranges([1..100],[3..12],'all',12, 100)
 
-# on mod.math
-time mfdb.compute.compute_aplists_ranges([1000..4000], 2, 0, 24, 1000, 10000)
+
+
+time mfdb.compute.compute_ambient_spaces([1..1000], [6,8,..,12], 0, 24)
+time mfdb.compute.compute_ambient_spaces([1..1000], [2,4,6,8,..,12], 'quad', 24)
+
+
+time mfdb.compute.compute_ambient_spaces([1..1000], 4, 0, 24)
+time mfdb.compute.compute_decomposition_ranges([1..1000], 4, 0, 24)
+time mfdb.compute.compute_aplists_ranges([1..1000], 4,0,24, 100)
+time mfdb.compute.compute_aplists_ranges([1..1000], 4,0,24, 100, 1000)
+time mfdb.compute.compute_aplists_ranges([1..1000], 4,0,24, 1000, 10000)
+
+
+time mfdb.compute.compute_ambient_spaces([1..1000],2,'all',24)
+time mfdb.compute.compute_decomposition_ranges([1..1000],2,'all',24)
+time mfdb.compute.compute_aplists_ranges([1..1000],2,'all',24, 100)
