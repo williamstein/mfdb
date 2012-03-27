@@ -209,7 +209,7 @@ class Filenames(object):
             assert isinstance(fields, (list, tuple, str))
             fields = set(fields)
 
-        data = set(os.listdir(self._data))
+        space_params = set(os.listdir(self._data))
         for k in rangify(krange):
             for N in rangify(Nrange):
                 for ch in rangify(irange):
@@ -233,9 +233,12 @@ class Filenames(object):
                         obj = {'space':(N,k,i)}
                         dim = dim_new(chi, k)
                         if dim > 0:
+                            fields0 = list(fields)
+                            fields0.remove('M')
+                            fields0.remove('decomp')
                             Nki = self.space_name(N,k,i)
-                            if Nki not in data:
-                                if 'M' in fields:
+                            if Nki not in space_params:
+                                if 'M' in fields0:
                                     obj2 = dict(obj)
                                     obj2['missing'] = 'M'
                                     yield obj2
@@ -252,7 +255,9 @@ class Filenames(object):
                                     else:
                                         degree = load(os.path.join(d2, 'B.sobj')).nrows()
                                         open(os.path.join(d2, 'degree.txt'),'w').write(str(degree))
-                                    newforms.append({'fname':fname, 'degree':degree})
+                                    f = {'fname':fname, 'degree':degree,
+                                         'other':set([x.split('.')[0] for x in os.listdir(d2)])}
+                                    newforms.append(f)
                             sum_deg = sum(f['degree'] for f in newforms)
                             if 'decomp' in fields and sum_deg != dim:
                                 obj2 = dict(obj)
@@ -262,6 +267,18 @@ class Filenames(object):
                                     obj2['bug'] = 'sum of degrees (=%s) is too big (should be %s) -- internal consistency error!'%(sum_deg, dim)
                                 yield obj2
                                 break
+                            missing = []
+                            for other in fields0:
+                                for j in range(len(newforms)):
+                                    if other not in newforms[j]['other']:
+                                        missing.append(other)
+                                        break
+                            if missing:
+                                missing.sort()
+                                obj2 = dict(obj)
+                                obj2['missing'] = 'other'
+                                obj2['other'] = missing
+                                yield obj2
                         
                             
 ################################################    
