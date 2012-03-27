@@ -253,13 +253,21 @@ class Filenames(object):
                                     if os.path.exists(deg):
                                         degree = eval(open(deg).read())
                                     else:
-                                        degree = load(os.path.join(d2, 'B.sobj')).nrows()
-                                        open(os.path.join(d2, 'degree.txt'),'w').write(str(degree))
+                                        B_file = os.path.join(d2, 'B.sobj')
+                                        if not os.path.exists(B_file):
+                                            degree = None
+                                        else:
+                                            degree = load(B_file).nrows()
+                                            open(os.path.join(d2, 'degree.txt'),'w').write(str(degree))
                                     f = {'fname':fname, 'degree':degree,
                                          'other':set([x.split('.')[0] for x in os.listdir(d2)])}
                                     newforms.append(f)
-                            sum_deg = sum(f['degree'] for f in newforms)
-                            if 'decomp' in fields and sum_deg != dim:
+                            degs = [f['degree'] for f in newforms]
+                            if None in degs:
+                                sum_deg = None
+                            else:
+                                sum_deg = sum(degs)
+                            if 'decomp' in fields and (sum_deg is None or sum_deg != dim):
                                 obj2 = dict(obj)
                                 obj2['missing'] = 'decomp'
                                 obj2['newforms'] = newforms
