@@ -28,9 +28,12 @@ class Filenames(object):
             raise RuntimeError, "please create the data directory '%s'"%data
         self._data = data
         self._known_db_file = os.path.join(self._data, 'known.sqlite3')
-        
+
+    def space_name(self, N, k, i):
+        return '%05d-%03d-%03d'%(N,k,i)
+    
     def space(self, N, k, i, makedir=True):
-        f = os.path.join(self._data, '%05d-%03d-%03d'%(N,k,i))
+        f = os.path.join(self._data, self.space_name(N,k,i))
         if makedir and not os.path.exists(f):
             os.makedirs(f)
         return f
@@ -161,6 +164,37 @@ class Filenames(object):
         cmd += ' ORDER BY N, k, i'
         return cursor.execute(cmd)
         
+    def find_missing(self, Nrange, krange, irange):
+        """
+        Return iterator of 4-tuples (N, k, i, missing), where missing
+        is one of the following strings:
+
+                'M', 'decomp',
+                'aplist-00100',  'aplist-00100-01000',  'aplist-01000-10000',
+                'charpoly-00100','charpoly-00100-01000','charpoly-01000-10000',
+                'zeros', 
+                'leading', 
+                'atkin_lehner'
+
+        If the string is not 'M' or 'decomp' then the meaning is that
+        the indicated data is not complete for *all* newforms in this
+        space, i.e., at least one is missing.  If 'decomp' is given,
+        it means the decomp isn't complete (it could be partial).
+        """
+        data = set(os.listdir(self._data))
+        for k in rangify(krange):
+            for N in rangify(Nrange):
+                for i in rangify(irange):
+                    if i == 0:
+                        # program around a bug in dimension_new_cusp_forms: Trac 12640
+                        d = dimension_new_cusp_forms(N)
+                    else:
+                        chi = character(N, i)
+                        d = dimension_new_cusp_forms(chi, k)
+                    if d > 0:
+                        dirname = self.space_name(N,k,i)
+                        if dirname not in data:
+                            yield (N,k,i,'M')
 
 ################################################    
 
