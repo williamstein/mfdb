@@ -240,7 +240,7 @@ class Filenames(object):
                                 fields0.remove('decomp')
                             Nki = self.space_name(N,k,i)
                             if Nki not in space_params:
-                                if 'M' in fields0:
+                                if 'M' in fields:
                                     obj2 = dict(obj)
                                     obj2['missing'] = 'M'
                                     yield obj2
@@ -503,12 +503,12 @@ def compute_aplists_ranges(Nrange, krange, irange, ncpu, *args):
 def phase1_goals(stages, fields=None):
     """
       Trivial character S_k(G0(N)):
-         * k=2   and N<=4096  = 2^12
-         * k<=16 and N<=512 = 2^9
-         * k<=32 and N<=32  = 2^5
+         0. k=2   and N<=4096  = 2^12
+         1. k<=16 and N<=512 = 2^9
+         2. k<=32 and N<=32  = 2^5
       Nontrivial character S_k(N, chi):
-         * k<=16, N<=128 = 2^7, all chi quadratic
-         * k=2,   N<=128 = 2^7, all chi!=1, up to Galois orbit
+         3. k<=16, N<=128 = 2^7, all chi quadratic
+         4. k=2,   N<=128 = 2^7, all chi!=1, up to Galois orbit
     """
     if 0 in stages:
         for X in filenames.find_missing(range(1,4096+1), [2], 0, fields=fields):
@@ -533,3 +533,10 @@ def phase1_goals(stages, fields=None):
         for X in filenames.find_missing(range(1,129), 2, 'all', fields=fields):
             yield X
         
+
+def phase1_goals0(stages, fields=None):
+    v = []
+    for X in phase1_goals(stages, fields):
+        print X
+        v.append(X)
+    return v
