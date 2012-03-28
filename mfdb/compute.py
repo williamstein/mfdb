@@ -11,7 +11,7 @@ from sage.all import (ModularSymbols, DirichletGroup, trivial_character,
                       cputime,
                       fork, parallel,
                       Integer,
-                      prime_range,
+                      prime_range, prime_divisors,
                       version,
                       Sequence,
                       cached_function,
@@ -85,6 +85,9 @@ class Filenames(object):
         a = '-'.join('%05d'%x for x in args)
         return os.path.join(self.factor(N,k,i,d,makedir), 'aplist-%s.sobj'%a)
 
+    def factor_atkin_lehner(self, N, k, i, d, makedir):
+        return os.path.join(self.factor(N,k,i,d,makedir), 'atkin_lehner.txt')
+    
     def meta(self, filename):
         if filename.endswith('.sobj'):
             filename = filename[:-len('.sobj')]
@@ -326,8 +329,8 @@ def compute_ambient_space(N, k, i):
     filename = filenames.ambient(N, k, i)
     if os.path.exists(filename):
         return
-    
-    eps = DirichletGroup(N).galois_orbits()[i][0]
+
+    eps = character(N, i)
     t = cputime()
     M = ModularSymbols(eps, weight=k, sign=1)
     tm = cputime(t)
@@ -437,6 +440,40 @@ def compute_decomposition_ranges(Nrange, krange, irange, ncpu):
     for X in f(v):
         print X
 
+def atkin_lehner_signs(A):
+    N = A.level()
+    return [A._compute_atkin_lehner_matrix(p)[0,0] for p in prime_divisors(N)]
+
+# atkin_lehner
+@fork    
+def compute_atkin_lehner(N, k, i):
+    filename = filenames.ambient(N, k, i)
+    if not os.path.exists(filename):
+        print "Ambient (%s,%s,%s) space not computed."%(N,k,i)
+        return
+        #compute_ambient_space(N, k, i)
+
+    print "computing atkin-lehner for (%s,%s,%s)"%(N,k,i)
+    m = filenames.number_of_known_factors(N, k, i)    
+    M = load_ambient_space(N, k, i)
+    for d in range(m):
+        atkin_lehner_file = filenames.factor_atkin_lehner(N, k, i, d, False)
+        if os.path.exists(atkin_lehner_file):
+            print "skipping computing atkin_lehner for (%s,%s,%s,%s) since it already exists"%(N,k,i,d)
+            # already done
+            continue
+        
+        # compute atkin_lehner
+        print "computing atkin_lehner for (%s,%s,%s,%s)"%(N,k,i,d)
+        t = cputime()
+        A = load_factor(N, k, i, d, M)
+        al = ' '.join(['+' if a > 0 else '-' for a in atkin_lehner_signs(A)])
+        print al
+        open(atkin_lehner_file, 'w').write(al)
+        tm = cputime(t)
+        meta = {'cputime':tm, 'version':version()}
+        save(meta, filenames.meta('atkin_lehner'))
+
 
 # aplists
     
@@ -469,8 +506,6 @@ def compute_aplists(N, k, i, *args):
 
     print "computing aplists for (%s,%s,%s)"%(N,k,i)
         
-    eps = DirichletGroup(N).galois_orbits()[i][0]
-
     m = filenames.number_of_known_factors(N, k, i)
 
     if m == 0:
@@ -508,7 +543,7 @@ def compute_aplists_ranges(Nrange, krange, irange, ncpu, *args):
 def phase1_goals(stages, fields=None):
     """
       Trivial character S_k(G0(N)):
-         0. k=2   and N<=4096  = 2^12
+         0. k=2   and N<=4096= 2^12
          1. k<=16 and N<=512 = 2^9
          2. k<=32 and N<=32  = 2^5
       Nontrivial character S_k(N, chi):
