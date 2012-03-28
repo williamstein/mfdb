@@ -246,14 +246,14 @@ class Filenames(object):
                             if 'decomp' in fields0:
                                 fields0.remove('decomp')
                             Nki = self.space_name(N,k,i)
-                            if Nki not in space_params:
+                            d3 = os.path.join(self._data, Nki)
+                            if Nki not in space_params or not os.path.exists(os.path.join(d3, 'M.sobj')):
                                 if 'M' in fields:
                                     obj2 = dict(obj)
                                     obj2['missing'] = 'M'
                                     yield obj2
                                 break
                             newforms = []
-                            d3 = os.path.join(self._data, Nki)
                             for fname in os.listdir(d3):
                                 if fname.isdigit():
                                     # directory containing data about a newforms
@@ -557,14 +557,14 @@ def generate_computations_missing_M(collection):
     for X in collection.find(missing="M"):
         N,k,i = X['space']
         v.append('compute_ambient_space(%s,%s,%s)'%(N,k,i))
-    return v
+    return list(sorted(set(v)))
         
 def generate_computations_missing_decomp(collection):
     v = []
     for X in collection.find(missing="decomp"):
         N,k,i = X['space']
         v.append('compute_decompositions(%s,%s,%s)'%(N,k,i))
-    return v
+    return list(sorted(set(v)))        
         
 def generate_computations_missing_aplists(collection):
     v = []
@@ -582,6 +582,6 @@ def generate_computations_missing_aplists(collection):
 ##             v.append('compute_charpolys(%s, %s, %s, 100, 1000)'%(N,k,i))
 ##         if 'charpoly-01000-10000' in X['other']:
 ##             v.append('compute_charpolys(%s, %s, %s, 1000, 10000)'%(N,k,i))
-    return v
+    return list(sorted(set(v)))        
     
     
