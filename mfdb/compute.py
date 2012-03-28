@@ -551,5 +551,37 @@ def phase1_goals_db(collection, stages, fields=None):
     for X in phase1_goals(stages, fields):
         print X
         collection.insert(X)
+
+def generate_computations_missing_M(collection):
+    v = []
+    for X in collection.find(missing="M"):
+        N,k,i = X['space']
+        v.append('compute_ambient_space(%s,%s,%s)'%(N,k,i))
+    return v
+        
+def generate_computations_missing_decomp(collection):
+    v = []
+    for X in collection.find(missing="decomp"):
+        N,k,i = X['space']
+        v.append('compute_decompositions(%s,%s,%s)'%(N,k,i))
+    return v
+        
+def generate_computations_missing_aplists(collection):
+    v = []
+    for X in collection.find(missing="other"):
+        N,k,i = X['space']
+        if 'aplist-00100' in X['other']:
+            v.append('compute_aplists(%s, %s, %s, 100)'%(N,k,i))
+        if 'aplist-00100-01000' in X['other']:
+            v.append('compute_aplists(%s, %s, %s, 100, 1000)'%(N,k,i))
+        if 'aplist-01000-10000' in X['other']:
+            v.append('compute_aplists(%s, %s, %s, 1000, 10000)'%(N,k,i))
+##         if 'charpoly-00100' in X['other']:
+##             v.append('compute_charpolys(%s, %s, %s, 100)'%(N,k,i))
+##         if 'charpoly-00100-01000' in X['other']:
+##             v.append('compute_charpolys(%s, %s, %s, 100, 1000)'%(N,k,i))
+##         if 'charpoly-01000-10000' in X['other']:
+##             v.append('compute_charpolys(%s, %s, %s, 1000, 10000)'%(N,k,i))
+    return v
     
     

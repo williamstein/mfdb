@@ -53,3 +53,8 @@ time mfdb.compute.compute_aplists_ranges([1..1000],2,'all',24, 100)
 # on mod.math
 time mfdb.compute.compute_aplists_ranges([1000..4000], 2, 0, 24, 1000, 10000)
 
+# -------------------
+
+import mfdb.compute
+m = mfdb.compute.nsql.missing.phase0
+time mfdb.compute.phase1_goals_db(m, [0..4])
