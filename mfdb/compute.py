@@ -2,7 +2,8 @@ import os
 
 import sqlite3
 
-from sage.all import (ModularSymbols, DirichletGroup, dimension_new_cusp_forms,
+from sage.all import (ModularSymbols, DirichletGroup, trivial_character,
+                      dimension_new_cusp_forms,
                       save, load,
                       cputime,
                       fork, parallel,
@@ -19,7 +20,7 @@ def dim_new(chi, k):
     else:
         return dimension_new_cusp_forms(chi, k)
 
-@cached_function
+#@cached_function
 def characters(N):
     """
     Return representatives for the Galois orbits of Dirichlet characters of level N.
@@ -27,6 +28,9 @@ def characters(N):
     return [X[0] for X in DirichletGroup(N).galois_orbits()]
 
 def character(N, i):
+    if i==0:
+        return trivial_character(N)
+    print "character(%s, %s)"%(N,i)
     return characters(N)[i]
 
 class Filenames(object):
