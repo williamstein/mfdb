@@ -20,7 +20,7 @@ def dim_new(chi, k):
     else:
         return dimension_new_cusp_forms(chi, k)
 
-#@cached_function
+@cached_function
 def characters(N):
     """
     Return representatives for the Galois orbits of Dirichlet characters of level N.
