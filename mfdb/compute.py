@@ -584,4 +584,27 @@ def generate_computations_missing_aplists(collection):
 ##             v.append('compute_charpolys(%s, %s, %s, 1000, 10000)'%(N,k,i))
     return list(sorted(set(v)))        
     
+
+
+import sage.all
+def parallel_eval(v, ncpu, do_fork=True):
+    """
+    INPUT:
+    - v -- list of strings that can be eval'd in this scope.
+    """
+    @parallel(ncpu)
+    def f(X):
+        if do_fork:
+            @fork
+            def g():
+                return eval(X)
+            return g()
+        else:
+            return eval(X)
+    for Z in f(v):
+        yield Z
+
+        
+        
+        
     
