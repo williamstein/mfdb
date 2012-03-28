@@ -62,3 +62,11 @@ time mfdb.compute.phase1_goals_db(m, [0..4])
 
 time v = mfdb.compute.generate_computations_missing_M(m)
 
+time mfdb.compute.phase1_goals_db(m, [2])
+m = mfdb.compute.nsql.missing.phase0_3
+time v = mfdb.compute.generate_computations_missing_M(m)	
+
+parallel_eval(v, 12)
+
+
+

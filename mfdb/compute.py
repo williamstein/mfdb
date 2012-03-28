@@ -637,7 +637,7 @@ def parallel_eval(v, ncpu, do_fork=True):
         else:
             return eval(X)
     for Z in f(v):
-        yield Z
+        print Z
 
         
         
