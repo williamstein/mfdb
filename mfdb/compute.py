@@ -1,6 +1,9 @@
 import os
 
 import sqlite3
+import nosqlite
+
+nsql = nosqlite.Client('nsql')
 
 from sage.all import (ModularSymbols, DirichletGroup, trivial_character,
                       dimension_new_cusp_forms,
@@ -502,8 +505,6 @@ def compute_aplists_ranges(Nrange, krange, irange, ncpu, *args):
     for X in f(v):
         print X
 
-
-    
 def phase1_goals(stages, fields=None):
     """
       Trivial character S_k(G0(N)):
@@ -544,3 +545,11 @@ def phase1_goals0(stages, fields=None):
         print X
         v.append(X)
     return v
+
+# suggestion for collection is: mfdb.compute.nsql.missing.phase0
+def phase1_goals_db(collection, stages, fields=None):
+    for X in phase1_goals(stages, fields):
+        print X
+        collection.insert(X)
+    
+    

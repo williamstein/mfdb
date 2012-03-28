@@ -1,6 +1,7 @@
 At LMFDB workshop:
 
-[ ] figure out *precisely* what is missing from data by making database table of
+[ ] (in progress -- finally!) 
+    figure out *precisely* what is missing from data by making database table of
     4-tuples (N,k,i,missing)
 
           missing = subset of [
@@ -37,7 +38,7 @@ At LMFDB workshop:
     bugs along the way or changing algorithms). 
       [ ] linear algebra mod p for big p for applications to 
           exact linear algebra
-      [ ] supercomputer
+      [ ] supercomputer: http://www.tacc.utexas.edu/user-services/user-guides/lonestar-user-guide
 
 [ ] export data in a way that LMFDB project can use
 
