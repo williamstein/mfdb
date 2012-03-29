@@ -442,7 +442,7 @@ def compute_decomposition_ranges(Nrange, krange, irange, ncpu):
 
 def atkin_lehner_signs(A):
     N = A.level()
-    return [A._compute_atkin_lehner_matrix(p)[0,0] for p in prime_divisors(N)]
+    return [A.atkin_lehner_operator(p).matrix()[0,0] for p in prime_divisors(N)]
 
 # atkin_lehner
 @fork    
