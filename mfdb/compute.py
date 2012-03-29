@@ -474,9 +474,7 @@ def compute_atkin_lehner(N, k, i):
         meta = {'cputime':tm, 'version':version()}
         save(meta, filenames.meta('atkin_lehner'))
 
-
 # aplists
-    
 @fork    
 def compute_aplists(N, k, i, *args):
     if i == 'all':

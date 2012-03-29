@@ -68,5 +68,5 @@ time v = mfdb.compute.generate_computations_missing_M(m)
 
 parallel_eval(v, 12)
 
-
-
+v = ['compute_atkin_lehner(%s,2,0)'%N for N in [933..4096]]
+time mfdb.compute.parallel_eval(v, 12)
