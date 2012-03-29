@@ -29,26 +29,56 @@ class Database(object):
     """
     Database of all computed modular forms information.
     """
+    pass
+
+class DatabaseFilesystem(Database):    
     def __init__(self, db):
         self._db = db
         
 class AmbientSpaces(object):
     """
     All ambient spaces in the database.
+
+    sage: X = AmbientSpaces()
+    sage: M = X[389,2,0]
+    sage: F = M.newform_classes()
+    sage: c = F[0]
+    sage: c.atkin_lehners()
+    sage: c.degree()
+    sage: c.hecke_eigenvalue_field()
+    sage: c.q_expansions(10)
+    sage: f = c.newforms()[0]
+    sage: f.q_expansion(10)
+    sage: L = f.lseries()
+    sage: L.zeros()
+    sage: L.lseries_leading()
     """
     def __call__(self, N, k, i):
-        return AmbientSpace(N,k,i)
+        return AmbientSpace(N, k, i)
     
     def missing(self, Nrange, krange, irange):
+        """
+        Return list of parameters (N,k,i) such that N in Nrange, k in
+        krange, and i in irange, such that the space (N,k,i) has not
+        been computed.  irange can be 0, 'all', 'quadratic', or a list
+        of integers.
+        """
         raise NotImplementedError
 
     def known(self):
+        """
+        Return list of parameters (N,k,i) such that a presentation for
+        the ambient space of modular symbols of level N, weight k, and
+        character defined by i is in the database.
+        """
         raise NotImplementedError
 
-class Newforms(object):
+
+class NewformClasses(object):
     """
-    All newforms in the database.
+    All newform classes in the database.
     """
+
     _properties = {
         'atkin_lehner':{'depends':[], 'command':('compute_atkin_lehner',)},
 
@@ -68,9 +98,17 @@ class Newforms(object):
     }
     
     def __call__(self, N, k, i, j):
+        """
+        Return the newform with parameters (N,k,i,j), where N is a
+        positive integer, k an integer >= 2, and i and j are
+        nonnegative integers.
+        """
         return AmbientSpace(N,k,i)[j]
 
     def properties(self):
+        """
+        Return list of the properties whose computation is supported.
+        """
         list(sorted(self._properties.keys()))
 
     def missing(self, Nrange, krange, irange, properties=None):
@@ -82,35 +120,48 @@ class Newforms(object):
         """
         raise NotImplementedError
 
-    def known(self):
+    def known(self, properties=None):
+        """
+        Return list of 4-tuples (N,k,i,j) of all newforms in the
+        database that have all given properties computed.
+        """
         raise NotImplementedError
 
 class AmbientSpace(object):
     """
-    A specific ambient space of modular forms.
+    An ambient space of modular forms.
     """
     def __init__(self, N, k, i):
-        self._params = (N,k,i)        
+        self._params = (N, k, i)        
 
     def __repr__(self):
-        return "Ambient space (%s,%s,%s,%s)"%self._params
+        return "Ambient space (%s,%s,%s)"%self._params
 
     def __len__(self):
+        """
+        Return number of Galois conjugacy classes of newforms in this space.
+        """
         raise NotImplementedError
 
     def __getitem__(self, j):
+        """
+        Return the j-th Galois conjugacy class of newforms in this space.
+        """
         if j < 0:
             j += len(self)
         if j < 0 or j >= len(self): raise IndexError
         N,k,i = self._params
         return Newform(N,k,i,j)
 
-    def newforms(self):
-        return Newforms()(*self._params)
+    def newform_classes(self):
+        """
+        Return all Galois conjugacy classes of newforms in this space.
+        """
+        return NewformClasses()(*self._params)
 
-class Newform(object):
+class NewformClass(object):
     """
-    A specific newform.
+    A Gal(Qbar/Q) orbit of newforms.
     """
     def __init__(self, N, k, i, j):
         self._params = (N,k,i,j)
@@ -118,6 +169,12 @@ class Newform(object):
     def __repr__(self):
         return "Newform (%s,%s,%s,%s)"%self._params
 
+    def newforms(self):
+        raise NotImplementedError
+
+    def __getitem__(self, i):
+        raise NotImplementedError
+    
     ###################################################################
     
     def compute_atkin_lehner(self):
@@ -147,10 +204,19 @@ class Newform(object):
         raise NotImplementedError
 
     def compute_zeros(self, max_imag):
+        """
+        """
         raise NotImplementedError
 
 
     ###################################################################
+
+    def degree(self):
+        """
+        Return the degree of this newform, which is the degree of the
+        Hecke eigenvalue field.
+        """
+        raise NotImplementedError
 
     def atkin_lehners(self):
         """
@@ -164,49 +230,80 @@ class Newform(object):
     def charpolys(self, B=infinity):
         """
         Return dictionary of all known characteristic polynomials of
-        the a_p, indexed by primes p<B.
+        the algebraic integers a_p, indexed by primes p<B.
         """
         raise NotImplementedError
 
-    def hecke_eigenvalues(self, embedding=None, B=infinity):
+    def hecke_eigenvalue_field(self):
+        """
+        Return abstract number field generated by the coefficients of
+        this newform.
+        """
+        raise NotImplementedError
+
+    def q_expansion(self, B=infinity):
+        """
+        Return q-expansion up `O(q^B)` with coefficients in the
+        abstract Hecke eigenvalue field, computed using as many
+        coefficients as we know.
+        """
+        raise NotImplementedError
+
+class Newform(object):
+    """
+    A newform equipped with a specific choice of embedding of its
+    coefficients into the complex numbers.
+    """
+    def __init__(self, newform_class, n):
+        self._newform_class = newform_class
+        self._n = n
+        
+    def hecke_eigenvalues(self, B=infinity, prec=53):
         """
         Return dictionary of all known Hecke eigenvalues a_p, indexed
         by primes p<B.
         """
         raise NotImplementedError
 
-    def zeros(self, B=infinity):
+    def q_expansion(self, B=infinity, prec=53):
         """
-        Return imaginary parts of known zeros of the L-function on the
-        center of the critical strip with imaginary part bounded by B
-        in absolute value.
-        """
-        raise NotImplementedError
-
-    def lseries_leading(self):
-        """
-        Return dictionary {i:(ord, leading), ...} with keys the
-        integers inside the critical strip and values
-            ord     = order of vanishing, and
-            leading = leading coefficient.
-        """
-        raise NotImplementedError
-    
-    ###################################################################
-
-    def q_expansion(self, embedding=None, B=infinity):
-        """
-        Return q-expansion computed using as many coefficients as we
-        know.
+        Return q-expansion up to `O(q^B)` with coefficients in complex
+        numbers, computed using as many coefficients as we know.
         """
         raise NotImplementedError
 
     def lseries(self):
         """
-        Return L-series computed using as many coefficients as we know.
+        Return the L-series of this newform.
+        """
+        return LSeries(self)
+
+class LSeries(object):
+    """
+    The L-series attached to a newform.
+    """
+    def __init__(self, newform):
+        self._newform = newform
+    
+    def zeros(self, B=infinity):
+        """
+        Return imaginary parts of known zeros of the L-function of
+        this newform on the center of the critical strip with
+        imaginary part bounded by B in absolute value.
         """
         raise NotImplementedError
 
+    def lseries_leading(self):
+        """
+        Return dictionary {i:(ord, leading), ...} with keys all the
+        integers inside the critical strip and values
+        
+            ord     = order of vanishing, and
+            leading = leading coefficient
+            
+        of this L-function.
+        """
+        raise NotImplementedError
     
 
     
