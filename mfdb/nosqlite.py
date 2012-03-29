@@ -671,6 +671,9 @@ class Collection(object):
         self.database = database
         self.name = str(name)
 
+    def __call__(self, *args, **kwds):
+        return self.database(*args, **kwds)
+
     def __repr__(self):
         """
         EXAMPLES::
@@ -1018,6 +1021,9 @@ class Collection(object):
             >>> 
         """
         if not query and len(kwds) == 0:
+            if len(self._columns()) == 0:
+                # nothing to do, since table wasn't created yet.
+                return
             # just drop the table
             cmd = 'DROP TABLE "%s"'%self.name
         else:
