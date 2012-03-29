@@ -30,11 +30,32 @@ def characters(N):
     """
     return [X[0] for X in DirichletGroup(N).galois_orbits()]
 
+def character_to_int(eps):
+    """
+    Return integer corresponding to given character.
+    """
+    if eps.is_trivial():
+        return 0
+    N = eps.modulus()
+    X = characters(N)
+    try:
+        return X.index(eps)
+    except IndexError:
+        # very unlikely -- would have to be some weird character
+        # not got from character(N,i)
+        for i, Y in enumerate(DirichletGroup(N).galois_orbits()):
+            if X in Y:
+                return i
+        raise RuntimeError
+
 def character(N, i):
     if i==0:
         return trivial_character(N)
     print "character(%s, %s)"%(N,i)
     return characters(N)[i]
+
+def parse_Nki(s):
+    return tuple(int(x) for x in s.split('-'))
 
 class Filenames(object):
     def __init__(self, data):
@@ -52,8 +73,11 @@ class Filenames(object):
             os.makedirs(f)
         return f
 
-    def ambient(self, N, k, i, makedir=True):
+    def M(self, N, k, i, makedir=True):
         return os.path.join(self.space(N,k,i,makedir=makedir), 'M.sobj')
+
+    def ambient(self, N, k, i, makedir=True):
+        return os.path.join(self.space(N,k,i,makedir=makedir), 'ambient.sobj')
 
     def decomp_meta(self, N, k, i):
         return os.path.join(self.space(N,k,i), 'decomp-meta.sobj')
@@ -89,9 +113,8 @@ class Filenames(object):
         return os.path.join(self.factor(N,k,i,d,makedir), 'atkin_lehner.txt')
     
     def meta(self, filename):
-        if filename.endswith('.sobj'):
-            filename = filename[:-len('.sobj')]
-        return filename + '-meta.sobj'
+        base, ext = os.path.splitext(filename)
+        return base + '-meta.sobj'
 
     def find_known(self):
         """
@@ -109,7 +132,7 @@ class Filenames(object):
         for Nki in os.listdir(self._data):
             z = Nki.split('-')
             if len(z) == 3:
-                N, k, i = [int(x) for x in z]
+                N, k, i = parse_Nki(z)
                 newforms = [x for x in os.listdir(os.path.join(self._data, Nki)) if x.isdigit()]
                 if len(newforms) == 0:
                     # maybe nothing computed?
@@ -250,7 +273,7 @@ class Filenames(object):
                                 fields0.remove('decomp')
                             Nki = self.space_name(N,k,i)
                             d3 = os.path.join(self._data, Nki)
-                            if Nki not in space_params or not os.path.exists(os.path.join(d3, 'M.sobj')):
+                            if Nki not in space_params or not os.path.exists(os.path.join(d3, 'M-meta.sobj')):
                                 if 'M' in fields:
                                     obj2 = dict(obj)
                                     obj2['missing'] = 'M'
@@ -350,9 +373,108 @@ def compute_ambient_spaces(Nrange, krange, irange, ncpu):
     for X in f(v):
         print X
     
-    
 def load_ambient_space(N, k, i):
     return load(filenames.ambient(N, k, i, makedir=False))
+
+def ambient_to_dict(M, i=None):
+    """
+    Data structure of dictionary that is created:
+    
+        - 'space': (N, k, i), the level, weight, and and integer
+          that specifies character in terms of table; all Python ints
+        - 'eps': (character) list of images of gens in QQ or cyclo
+          field; this redundantly specifies the character
+        - 'manin': (manin_gens) list of 2-tuples or 3-tuples of
+          integers (all the Manin symbols)
+        - 'basis': list of integers -- index into above list of Manin symbols
+        - 'rels': relation matrix (manin_gens_to_basis) -- a sparse
+          matrix over a field (QQ or cyclotomic)
+        - 'mod2term': list of pairs (n, c), such that the ith element
+          of the list is equivalent via 2-term relations only
+          to c times the n-th basis Manin symbol; these
+    """
+    if i is None:
+        i = character_to_int(M.character())
+    return {'space':(int(M.level()), int(M.weight()), int(i)),
+            'eps':list(M.character().values_on_gens()),
+            'manin':[(t.i,t.u,t.v) for t in M._manin_generators],
+            'basis':M._manin_basis,
+            'rels':M._manin_gens_to_basis,
+            'mod2term':M._mod2term}
+
+def dict_to_ambient(modsym):
+
+    N,k,i = modsym['space']
+    eps   = modsym['eps']
+    manin = modsym['manin']
+    basis = modsym['basis']
+    rels  = modsym['rels']
+    mod2term  = modsym['mod2term']
+    
+    F = rels.base_ring()
+    if i == 0:
+        eps = trivial_character(N)
+    else:
+        eps = DirichletGroup(N, F)(eps)
+        
+    from sage.modular.modsym.manin_symbols import ManinSymbolList, ManinSymbol
+    manin_symbol_list = ManinSymbolList(k, manin)
+    
+    def custom_init(M):
+        # reinitialize the list of Manin symbols with ours, which may be
+        # ordered differently someday:
+        syms = M.manin_symbols()
+        ManinSymbolList.__init__(syms, k, manin_symbol_list)
+        
+        M._manin_generators = [ManinSymbol(syms, x) for x in manin]
+        M._manin_basis = basis
+        M._manin_gens_to_basis = rels
+        M._mod2term = mod2term
+        return M
+
+    return ModularSymbols(eps, k, sign=1, custom_init=custom_init, use_cache=False)
+
+def save_ambient_space(M, i):
+    N = M.level()
+    k = M.weight()
+    fname = filenames.ambient(N, k, i, makedir=True)
+    if os.path.exists(fname):
+        print "%s already exists; not recreating"%fname
+        return 
+    print "Creating ", fname
+    save(ambient_to_dict(M, i), fname)
+
+def load_M(N, k, i):
+    return load(filenames.M(N, k, i, makedir=False))
+
+def convert_M_to_ambient(N, k, i):
+    save_ambient_space(load_M(N,k,i), i)
+
+def convert_all_M_to_ambient():
+    d = filenames._data
+    for X in os.listdir(d):
+        p = os.path.join(d, X)
+        if os.path.isdir(p):
+            f = set(os.listdir(p))
+            if 'M.sobj' in f and 'ambient.sobj' not in f:
+                print X
+                convert_M_to_ambient(*parse_Nki(X))
+
+def delete_all_M_after_conversion():
+    d = filenames._data
+    for X in os.listdir(d):
+        p = os.path.join(d, X)
+        if os.path.isdir(p):
+            f = set(os.listdir(p))
+            if 'M.sobj' in f and 'ambient.sobj' in f:
+                print X
+                os.unlink(os.path.join(p, 'M.sobj'))
+
+    
+    
+
+def load_ambient_space(N, k, i):
+    return dict_to_ambient(load(filenames.ambient(N, k, i, makedir=False)))
 
 def load_factor(N, k, i, d, M=None):
     import sage.modular.modsym.subspace
@@ -472,7 +594,7 @@ def compute_atkin_lehner(N, k, i):
         open(atkin_lehner_file, 'w').write(al)
         tm = cputime(t)
         meta = {'cputime':tm, 'version':version()}
-        save(meta, filenames.meta('atkin_lehner'))
+        save(meta, filenames.meta(atkin_lehner_file))
 
 # aplists
 @fork    
