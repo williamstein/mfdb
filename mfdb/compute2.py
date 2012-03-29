@@ -29,29 +29,46 @@ class Database(object):
     """
     Database of all computed modular forms information.
     """
-    pass
+    def __init__(self):
+        raise NotImplementedError, "derive!"
 
+    def ambient_modular_symbols_space(self, N, k, i):
+        raise NotImplementedError
+
+    def newform_modular_symbols_space(self, N, k, i, j):
+        raise NotImplementedError
+
+    def newform_aplist(self, N, k, i, j, start, stop=None):
+        raise NotImplementedError
+
+    def newform_atkin_lehner_eigenvalues(self, N, k, i, j):
+        raise NotImplementedError
+    
 class DatabaseFilesystem(Database):    
-    def __init__(self, db):
-        self._db = db
+    def __init__(self, directory):
+        self._directory = directory
         
+class DatabaseNoSQLite(Database):    
+    def __init__(self, nsdb):
+        self._nsdb = nsdb
+
 class AmbientSpaces(object):
     """
     All ambient spaces in the database.
 
-    sage: X = AmbientSpaces()
-    sage: M = X[389,2,0]
-    sage: F = M.newform_classes()
-    sage: c = F[0]
-    sage: c.atkin_lehners()
-    sage: c.degree()
-    sage: c.hecke_eigenvalue_field()
-    sage: c.q_expansions(10)
-    sage: f = c.newforms()[0]
-    sage: f.q_expansion(10)
-    sage: L = f.lseries()
-    sage: L.zeros()
-    sage: L.lseries_leading()
+        sage: X = AmbientSpaces()
+        sage: M = X[389,2,0]
+        sage: F = M.newform_classes()
+        sage: c = F[0]
+        sage: c.atkin_lehners()
+        sage: c.degree()
+        sage: c.hecke_eigenvalue_field()
+        sage: c.q_expansions(10)
+        sage: f = c.newforms()[0]
+        sage: f.q_expansion(10)
+        sage: L = f.lseries()
+        sage: L.zeros()
+        sage: L.lseries_leading()
     """
     def __call__(self, N, k, i):
         return AmbientSpace(N, k, i)
@@ -170,6 +187,9 @@ class NewformClass(object):
         return "Newform (%s,%s,%s,%s)"%self._params
 
     def newforms(self):
+        """
+        Return all the newforms in this class.
+        """
         raise NotImplementedError
 
     def __getitem__(self, i):
@@ -205,10 +225,11 @@ class NewformClass(object):
 
     def compute_zeros(self, max_imag):
         """
+        Compute and store zeros up to the given bound for all the
+        conjugate newforms in this class.
         """
         raise NotImplementedError
-
-
+    
     ###################################################################
 
     def degree(self):
@@ -218,7 +239,7 @@ class NewformClass(object):
         """
         raise NotImplementedError
 
-    def atkin_lehners(self):
+    def atkin_lehner_eigenvalues(self):
         """
         Return list of integers +1 or -1 that are the eigenvalues of
         the Atkin-Lehner involutions acting on this newform,

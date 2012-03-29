@@ -473,7 +473,6 @@ def delete_all_M_after_conversion():
                 os.unlink(os.path.join(p, 'M.sobj'))
 
     
-    
 # old version -- doesn't require trac 12779.
 #def load_ambient_space(N, k, i):
 #    return load(filenames.ambient(N, k, i, makedir=False))
