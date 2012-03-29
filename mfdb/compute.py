@@ -1,3 +1,8 @@
+##############
+# The code REQUIRES: 12779
+#          benefits from: 12772, 11358, 12640, 10281
+# 
+
 import os
 
 import sqlite3
@@ -373,9 +378,6 @@ def compute_ambient_spaces(Nrange, krange, irange, ncpu):
     for X in f(v):
         print X
     
-def load_ambient_space(N, k, i):
-    return load(filenames.ambient(N, k, i, makedir=False))
-
 def ambient_to_dict(M, i=None):
     """
     Data structure of dictionary that is created:
@@ -472,6 +474,9 @@ def delete_all_M_after_conversion():
 
     
     
+# old version -- doesn't require trac 12779.
+#def load_ambient_space(N, k, i):
+#    return load(filenames.ambient(N, k, i, makedir=False))
 
 def load_ambient_space(N, k, i):
     return dict_to_ambient(load(filenames.ambient(N, k, i, makedir=False)))
