@@ -458,7 +458,10 @@ def convert_all_M_to_ambient():
             f = set(os.listdir(p))
             if 'M.sobj' in f and 'ambient.sobj' not in f:
                 print X
-                convert_M_to_ambient(*parse_Nki(X))
+                try:
+                    convert_M_to_ambient(*parse_Nki(X))
+                except:
+                    print "ERROR!"
 
 def delete_all_M_after_conversion():
     d = filenames._data
