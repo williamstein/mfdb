@@ -23,7 +23,10 @@ from sage.all import (ModularSymbols,
                       prime_range, prime_divisors,
                       Sequence)
 
-# Basis Sage computations
+
+#####################################################################
+# Basic Sage computations
+#####################################################################
 @cached_function
 def characters(N):
     """
@@ -31,6 +34,7 @@ def characters(N):
     """
     return [X[0] for X in DirichletGroup(N).galois_orbits()]
 
+@cached_function
 def character_to_int(eps):
     """
     Return integer corresponding to given character.
@@ -64,19 +68,19 @@ class ObjTypeBase(object):
     def __repr__(self):
         return 'Object type %s'%self.name
         
-    def to_simple(self, obj):
-        return self._to_simple(obj)
+    def to_simple(self, db, obj):
+        return self._to_simple(db, obj)
 
-    def _to_simple(self, obj):
+    def _to_simple(self, db, obj):
         return obj, 0
 
-    def from_simple(self, obj, version):
-        a = self._from_simple(obj, version)
+    def from_simple(self, db, obj, version):
+        a = self._from_simple(db, obj, version)
         if a is None:
             raise ValueError, "version (=%s) not supported"%version
         return a
         
-    def _from_simple(self, obj, version):
+    def _from_simple(self, db, obj, version):
         if version == 0:
             return obj
         raise ValueError
@@ -97,11 +101,11 @@ class ObjType_character(ObjTypeBase):
             'i-th representative of the Galois conjugacy classes of Dirichlet characters with modulus N',
             {'N':int,'i':int})
         
-    def _to_simple(self, obj):
+    def _to_simple(self, db, obj):
         version = 0
         return {'N':obj.modulus(), 'vals':list(obj.values_on_gens())}, version
 
-    def _from_simple(self, obj, version):
+    def _from_simple(self, db, obj, version):
         if version == 0:
             vals = obj['vals']
             return DirichletGroup(obj['N'], vals[0].parent())(vals)
@@ -113,26 +117,25 @@ class ObjType_ambient_modular_symbols_space(ObjTypeBase):
             'ambient modular symbols space of level N, weight k, and character i, with sign +1',
             {'N':int, 'k':int, 'i':int})
 
-    def _to_simple(self, obj):
-        version = 1
+    def _to_simple(self, db, obj):
+        version = 2
         i = character_to_int(obj.character())
-        return {'space':(int(obj.level()), int(obj.weight()), int(i)),
+        return {'params':(int(obj.level()), int(obj.weight()), i),
                 'eps':list(obj.character().values_on_gens()),
                 'manin':[(t.i,t.u,t.v) for t in obj._manin_generators],
                 'basis':obj._manin_basis,
                 'rels':obj._manin_gens_to_basis,
                 'mod2term':obj._mod2term}, version
     
-    def _from_simple(self, obj, version):
+    def _from_simple(self, db, obj, version):
         if version == 0:
             return obj
         elif version == 1:
-            N     = obj['space'][0]
-            k     = obj['space'][1]
-            eps   = obj['eps']
-            manin = obj['manin']
-            basis = obj['basis']
-            rels  = obj['rels']
+            N,k,i     = obj['params']
+            eps       = obj['eps']
+            manin     = obj['manin']
+            basis     = obj['basis']
+            rels      = obj['rels']
             mod2term  = obj['mod2term']
 
             F = rels.base_ring()
@@ -159,11 +162,36 @@ class ObjType_new_simple_modular_symbols_space(ObjTypeBase):
             'j-th new simple modular symbols symbols space of level N, weight k, and character i, with sign +1',
             {'N':int, 'k':int, 'i':int, 'j':int})
 
-    def _to_simple(self, obj):
+    def _to_simple(self, db, obj):
         version = 0
-        obj.free_module().basis_matrix()
+        return {'params':obj._params,
+                'B':B,
+                'Bd':Bd,
+                'v':v,
+                'nz':nz}
         
-    def _from_simple(self, obj, version):
+    def _from_simple(self, db, obj, version):
+
+        N,k,i,j = obj['params']
+        B       = obj['B']
+        Bd      = obj['Bd']
+        v       = obj['v']
+        nz      = obj['nz']
+
+        M = db.get('ambient_modular_symbols_space', N=N, k=k, i=i)
+        B._cache['in_echelon_form'] = True
+        Bd._cache['in_echelon_form'] = True
+        
+        from sage.modular.modsym.subspace import ModularSymbolsSubspace
+        A = ModularSymbolsSubspace(M, B.row_module(), Bd.row_module(), check=False)
+        A._is_simple = True
+        A._HeckeModule_free_module__decomposition = {(None,True):Sequence([A], check=False)}
+        
+        A._params = (N,k,i,j)
+        A._HeckeModule_free_module__dual_eigenvector = {('a',nz):(v,False)}
+        
+        return A
+        
 
 
 #######################
@@ -230,14 +258,14 @@ class Database(object):
         self._obj_to_simple = to_simple
         self._simple_to_obj = simple.simple_to_obj
 
-    def get(self, objtype, params):
+    def get(self, objtype, **params):
         """
         Return the object of type objtype with given params stored in
         the database.  Raises a KeyError if there is no such object.
         """
         raise KeyError
 
-    def set(self, objtype, params, value):
+    def set(self, objtype, obj, **params):
         """
         Store in the database the object value of type objtype defined
         by the given params.  
@@ -281,11 +309,11 @@ class DatabaseNoSQLite(Database):
     def get(self, objtype, **params):
         objtype = ObjType(objtype)        
         A = self._collection(objtype).find_one(**params)
-        return objtype.from_simple(A['obj'], A['version'])
+        return objtype.from_simple(self, A['obj'], A['version'])
         
     def set(self, objtype, obj, **params):
         objtype = ObjType(objtype)        
-        obj, version = objtype.to_simple(obj)
+        obj, version = objtype.to_simple(self, obj)
         C = self._collection(objtype)
         # changing before lets us store multiple versions
         # we could have a separate sweep to query and delete old versions
@@ -315,6 +343,12 @@ class SimpleMapper(object):
     
     def simple_to_obj(self, version, objtype, simple):
         return simple
+
+
+
+
+
+
 
 
 ################################################################
