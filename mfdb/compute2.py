@@ -1,6 +1,7 @@
 #################################################################
 #                                                               #
 # Database of Classical GL2 Holomorphic Modular Forms over Q    #
+# (c) William Stein, 2012                                       #
 #                                                               #
 #################################################################
 
@@ -22,35 +23,305 @@ from sage.all import (ModularSymbols,
                       prime_range, prime_divisors,
                       Sequence)
 
+# Basis Sage computations
+@cached_function
+def characters(N):
+    """
+    Return representatives for the Galois orbits of Dirichlet characters of level N.
+    """
+    return [X[0] for X in DirichletGroup(N).galois_orbits()]
 
+def character_to_int(eps):
+    """
+    Return integer corresponding to given character.
+    """
+    if eps.is_trivial():
+        return 0
+    N = eps.modulus()
+    X = characters(N)
+    try:
+        return X.index(eps)
+    except IndexError:
+        # very unlikely -- would have to be some weird character
+        # not got from character(N,i)
+        for i, Y in enumerate(DirichletGroup(N).galois_orbits()):
+            if X in Y:
+                return i
+        raise RuntimeError
+
+#####################################################################
+#
+# Templates for the types of data we store. 
+#
+#####################################################################
+
+class ObjTypeBase(object):
+    def __init__(self, name, desc, params):
+        self.name = name
+        self.desc = desc
+        self.params = params
+
+    def __repr__(self):
+        return 'Object type %s'%self.name
+        
+    def to_simple(self, obj):
+        return self._to_simple(obj)
+
+    def _to_simple(self, obj):
+        return obj, 0
+
+    def from_simple(self, obj, version):
+        a = self._from_simple(obj, version)
+        if a is None:
+            raise ValueError, "version (=%s) not supported"%version
+        return a
+        
+    def _from_simple(self, obj, version):
+        if version == 0:
+            return obj
+        raise ValueError
+
+#########################################################################
+#
+# The database supports storing the following object types.  Each
+# class must derive from ObjTypeBase (as illustrated), and may provide
+# a _to_simple and _from_simple method, which is used when saving the
+# objects in the database or recovering them.  The _from_simple method
+# should return None in case the given version is not supported.
+#
+#########################################################################
+
+class ObjType_character(ObjTypeBase):
+    def __init__(self, name):
+        ObjTypeBase.__init__(self, name,
+            'i-th representative of the Galois conjugacy classes of Dirichlet characters with modulus N',
+            {'N':int,'i':int})
+        
+    def _to_simple(self, obj):
+        version = 0
+        return {'N':obj.modulus(), 'vals':list(obj.values_on_gens())}, version
+
+    def _from_simple(self, obj, version):
+        if version == 0:
+            vals = obj['vals']
+            return DirichletGroup(obj['N'], vals[0].parent())(vals)
+        
+            
+class ObjType_ambient_modular_symbols_space(ObjTypeBase):
+    def __init__(self, name):
+        ObjTypeBase.__init__(self, name,
+            'ambient modular symbols space of level N, weight k, and character i, with sign +1',
+            {'N':int, 'k':int, 'i':int})
+
+    def _to_simple(self, obj):
+        version = 1
+        i = character_to_int(obj.character())
+        return {'space':(int(obj.level()), int(obj.weight()), int(i)),
+                'eps':list(obj.character().values_on_gens()),
+                'manin':[(t.i,t.u,t.v) for t in obj._manin_generators],
+                'basis':obj._manin_basis,
+                'rels':obj._manin_gens_to_basis,
+                'mod2term':obj._mod2term}, version
+    
+    def _from_simple(self, obj, version):
+        if version == 0:
+            return obj
+        elif version == 1:
+            N     = obj['space'][0]
+            k     = obj['space'][1]
+            eps   = obj['eps']
+            manin = obj['manin']
+            basis = obj['basis']
+            rels  = obj['rels']
+            mod2term  = obj['mod2term']
+
+            F = rels.base_ring()
+            eps = DirichletGroup(N, F)(eps)
+            
+            from sage.modular.modsym.manin_symbols import ManinSymbolList, ManinSymbol
+            manin_symbol_list = ManinSymbolList(k, manin)
+
+            def custom_init(M):
+                # reinitialize the list of Manin symbols with ours, which may be
+                # ordered differently someday:
+                syms = M.manin_symbols()
+                ManinSymbolList.__init__(syms, k, manin_symbol_list)
+                M._manin_generators = [ManinSymbol(syms, x) for x in manin]
+                M._manin_basis = basis
+                M._manin_gens_to_basis = rels
+                M._mod2term = mod2term
+                return M
+            return ModularSymbols(eps, k, sign=1, custom_init=custom_init, use_cache=False)            
+
+class ObjType_new_simple_modular_symbols_space(ObjTypeBase):
+    def __init__(self, name):
+        ObjTypeBase.__init__(self, name,
+            'j-th new simple modular symbols symbols space of level N, weight k, and character i, with sign +1',
+            {'N':int, 'k':int, 'i':int, 'j':int})
+
+    def _to_simple(self, obj):
+        version = 0
+        obj.free_module().basis_matrix()
+        
+    def _from_simple(self, obj, version):
+
+
+#######################
+
+object_types = dict([(o.name, o) for o in
+                     [o(k[len('ObjType_'):]) for k, o in
+                                globals().iteritems() if k.startswith('ObjType_')]])
+
+def ObjType(o):
+    """
+    Convert a string or object type o into an object type.
+    """
+    if isinstance(o, ObjTypeBase):
+        return o
+    return object_types[str(o)]
+
+#####################################################################
+#
 # The database classes
+#
+#####################################################################
+
 
 class Database(object):
     """
     Database of all computed modular forms information.
-    """
-    def __init__(self):
-        raise NotImplementedError, "derive!"
 
-    def ambient_modular_symbols_space(self, N, k, i):
-        raise NotImplementedError
+    All methods raise a KeyError if the requested data
+    is not in the database.
 
-    def newform_modular_symbols_space(self, N, k, i, j):
-        raise NotImplementedError
+    - hecke_eigenvalue_matrix(N, k, i, j, start, stop=None): matrix
+      whose rows give the Hecke eigenvalues for primes p with start <=
+      p < stop for the (N,k,i,j) new simple modular symbols space.
 
-    def newform_aplist(self, N, k, i, j, start, stop=None):
-        raise NotImplementedError
+    - charpoly_list(N, k, i, j, start, stop=None): list whose entries
+      are the characteristic polynomials of the Hecke eigenvalues a_p
+      with start <= p < stop for the (N,k,i,j) new simple modular
+      symbols space.
 
-    def newform_atkin_lehner_eigenvalues(self, N, k, i, j):
-        raise NotImplementedError
+    - hecke_eigenvalue_field_basis(N, k, i, j): fixed choice of basis
+      for the Hecke eigenvalue field for the (N,k,i,j) new simple
+      modular symbols space.  The Hecke eigenvalues a_p are expressed
+      in terms of this basis.
+
+    - atkin_lehner_eigenvalues(N, k, i, j): sequence of integers +1/-1
+      giving the eigenvalues of the Atkin-Lehner involutions w_{p^r}
+      acting on the (N,k,i,j) new simple modular symbols space,
+      ordered by p.
     
+    - zeroes(N, k, i, j, max_imag=100): imaginary parts of zeros of
+      L-series of conjugates of the newforms corresponding to the
+      (N,k,i,j) new simple modular symbols space.  this is a list of
+      lists of zeros of each conjugate.
+
+    - lseries_leading(N, k, i, j): order of vanishing and leading
+      coefficients of the L-series of conjugates of the newforms
+      corresponding to the (N,k,i,j) new simple modular symbols space.
+    """
+    def __init__(self, to_simple=None, from_simple=None):
+        if to_simple is None or from_simple is None:
+            simple = SimpleMapper()
+            to_simple = simple.obj_to_simple
+            from_simple = simple.simple_to_obj
+        self._obj_to_simple = to_simple
+        self._simple_to_obj = simple.simple_to_obj
+
+    def get(self, objtype, params):
+        """
+        Return the object of type objtype with given params stored in
+        the database.  Raises a KeyError if there is no such object.
+        """
+        raise KeyError
+
+    def set(self, objtype, params, value):
+        """
+        Store in the database the object value of type objtype defined
+        by the given params.  
+        """
+        raise NotImplementedError
+
+    def drop(self, objtype, confirm=False):
+        """
+        Delete everything in the database about the given objtype.
+        """
+        if not confirm:
+            raise RuntimeError("are you sure?")
+        objtype = ObjType(objtype)
+        self._drop(objtype, confirm=confirm)
+
+    def known(self, objtype):
+        """
+        Returns list of params of all objects with given objtype in
+        the database.
+        """
+        raise NotImplementedError
+
 class DatabaseFilesystem(Database):    
     def __init__(self, directory):
         self._directory = directory
         
-class DatabaseNoSQLite(Database):    
-    def __init__(self, nsdb):
+class DatabaseNoSQLite(Database):
+    RESERVED_COLUMNS = ['obj', 'version']
+    
+    def __init__(self, nsdb=None, **kwds):
+        if nsdb is None:
+            import nosqlite
+            nsdb = nosqlite.Client('nosqlite_test_db').db
         self._nsdb = nsdb
+        Database.__init__(self, **kwds)
+
+    def _collection(self, objtype):
+        objtype = ObjType(objtype)
+        return self._nsdb.__getattr__(objtype.name)
+
+    def get(self, objtype, **params):
+        objtype = ObjType(objtype)        
+        A = self._collection(objtype).find_one(**params)
+        return objtype.from_simple(A['obj'], A['version'])
+        
+    def set(self, objtype, obj, **params):
+        objtype = ObjType(objtype)        
+        obj, version = objtype.to_simple(obj)
+        C = self._collection(objtype)
+        # changing before lets us store multiple versions
+        # we could have a separate sweep to query and delete old versions
+        params['version'] = version
+        if C.count(**params) > 0:
+            C.update({'obj':obj}, **params)
+        else:
+            # usual case
+            params['obj'] = obj
+            C.insert(**params)
+
+    def _drop(self, objtype, confirm):
+        if confirm:
+            self._collection(objtype).delete()
+
+    def known(self, objtype):
+        objtype = ObjType(objtype) 
+        C = self._collection(objtype)
+        fields = [x for x in sorted(C._columns()) if x not in self.RESERVED_COLUMNS]
+        return list(self._collection(objtype).find('', fields=fields))
+
+
+class SimpleMapper(object):
+    def obj_to_simple(self, objtype, obj):
+        version = 0
+        return obj, version
+    
+    def simple_to_obj(self, version, objtype, simple):
+        return simple
+
+
+################################################################
+#                                                              #
+# Structured mathematical interface to a database.             #
+#                                                              #
+################################################################
 
 class AmbientSpaces(object):
     """
