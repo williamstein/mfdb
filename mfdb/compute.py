@@ -475,10 +475,16 @@ def delete_all_M_after_conversion():
     
 # old version -- doesn't require trac 12779.
 #def load_ambient_space(N, k, i):
-#    return load(filenames.ambient(N, k, i, makedir=False))
+#    return load(filenames.M(N, k, i, makedir=False))
 
 def load_ambient_space(N, k, i):
-    return dict_to_ambient(load(filenames.ambient(N, k, i, makedir=False)))
+    fname = filenames.ambient(N, k, i, makedir=False)
+    if os.path.exists(fname):
+        return dict_to_ambient(load(fname))
+    fname = filenames.M(N, k, i, makedir=False)
+    if os.path.exists(fname):
+        return load(fname)
+    raise ValueError, "ambient space (%s,%s,%s) not yet computed"%(N,k,i)
 
 def load_factor(N, k, i, d, M=None):
     import sage.modular.modsym.subspace
