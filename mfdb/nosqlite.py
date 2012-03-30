@@ -464,7 +464,7 @@ class Client(object):
             RuntimeError: ...
         """
         if not isinstance(cmd, str):
-            raise TypeError("cmd (=%s) must be a string"%cmd)
+            cmd = str(cmd)
         if coerce:
             if many:
                 t = [tuple([self._coerce_(x) for x in y]) for y in t]
@@ -1223,9 +1223,15 @@ class Collection(object):
 
             >>>                 
         """
+        if len(self._columns()) == 0:
+            # nothing to do, since nothing in table yet
+            return 0
         kwds['_count'] = True
         cmd = self._find_cmd(*args, **kwds)
-        return self.database(cmd)[0]
+        try:
+            return self.database(cmd)[0][0]
+        except sqlite3.OperationalError: # if some columns in query don't exist
+            return 0
 
     def __iter__(self):
         """
