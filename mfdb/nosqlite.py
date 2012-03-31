@@ -348,11 +348,14 @@ class LocalServer(object):
                 cmds = [cmds]
         v = []
         for c in cmds:
-            if isinstance(c, tuple):
-                o = cursor.executemany(*c) if many else cursor.execute(*c)
-            else:
-                o = cursor.execute(c)
-            v.extend(list(o))
+            try:
+                if isinstance(c, tuple):
+                    o = cursor.executemany(*c) if many else cursor.execute(*c)
+                else:
+                    o = cursor.execute(c)
+                v.extend(list(o))
+            except sqlite3.OperationalError:
+                continue
         db.commit()
         return v
 
@@ -1245,7 +1248,6 @@ class Collection(object):
              order_by=None, _rowid=False, limit=None, offset=0, **kwds):
         """
         Return iterator over all documents that match the given query.
-
 
         EXAMPLES::
 
